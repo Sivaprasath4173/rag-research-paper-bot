@@ -131,18 +131,19 @@ prompt_template = ChatPromptTemplate.from_messages([
     ("human", "Question: {question}"),
 ])
 
+load_dotenv(override=True)
 api_key = os.environ.get("GOOGLE_API_KEY", "").strip()
 
-# Check sidebar user input fallback if env contains placeholder
-user_key = st.sidebar.text_input("Enter Google API Key:", value="" if "your_google_api_key" in api_key else api_key, type="password")
+if not api_key or "your_google_api_key" in api_key:
+    # Optional sidebar fallback only if .env key is missing/placeholder
+    user_key = st.sidebar.text_input("Enter Google API Key:", type="password")
+    api_key = user_key.strip()
 
-active_api_key = user_key.strip() if user_key.strip() else api_key
-
-if not active_api_key or "your_google_api_key" in active_api_key:
-    st.warning("⚠️ **API Key Required**: Please enter your real `GOOGLE_API_KEY` in the sidebar or update `.env` to run the LLM generation.")
+if not api_key or "your_google_api_key" in api_key:
+    st.warning("⚠️ **API Key Required**: Please update `GOOGLE_API_KEY` in `.env` or enter it in the sidebar.")
     st.stop()
 
-llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", google_api_key=active_api_key, temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", google_api_key=api_key, temperature=0)
 
 output_parser = StrOutputParser()
 
