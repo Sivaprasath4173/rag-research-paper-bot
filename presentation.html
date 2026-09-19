@@ -25,22 +25,46 @@
   /* ─── Screen layout ─── */
   body {
     font-family: 'Segoe UI', system-ui, sans-serif;
-    background: #0f172a;
+    background: #090d16;
     color: #e2e8f0;
+    display: flex;
+    justify-content: center;
   }
-  .deck { display: flex; flex-direction: column; gap: 0; }
+  .deck {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    padding: 32px 0;
+    width: 100%;
+    max-width: 1200px;
+    align-items: center;
+  }
 
   /* ─── One slide ─── */
   .slide {
-    width: 297mm;
-    height: 210mm;
-    max-width: 100vw;
-    max-height: 56vw;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    min-height: 600px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     position: relative;
     background: #0f172a;
+    border-radius: 12px;
+    border: 1px solid #1e293b;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  }
+
+  @media print {
+    .deck { gap: 0; padding: 0; max-width: 100%; }
+    .slide {
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+      border: none;
+      box-shadow: none;
+      aspect-ratio: auto;
+    }
   }
 
   /* ─── Colour themes ─── */
