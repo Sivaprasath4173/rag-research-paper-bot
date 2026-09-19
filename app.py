@@ -174,4 +174,10 @@ if query:
                     st.write(doc.page_content)
                     
         except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                st.warning("⏱️ **Google API Rate Limit Reached (429)**: You have hit the Google Gemini free-tier quota (20 requests/minute). Please wait **56 seconds** before typing another question.")
+            elif "503" in err_str or "UNAVAILABLE" in err_str:
+                st.warning("📡 **Google API Temporary Overload (503)**: Google servers are experiencing high traffic. Please retry in a few seconds.")
+            else:
+                st.error(f"An error occurred: {err_str}")
