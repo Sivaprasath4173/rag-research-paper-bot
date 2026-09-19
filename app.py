@@ -159,10 +159,26 @@ rag_chain = RunnableLambda(rag_chain_fn)
 
 query = st.text_input("Enter your question:")
 
+def invoke_app_with_retry(question: str, max_retries: int = 5) -> dict:
+    import time
+    retries = 0
+    while retries < max_retries:
+        try:
+            return rag_chain.invoke(question)
+        except Exception as e:
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
+                retries += 1
+                if retries >= max_retries:
+                    raise e
+                time.sleep(6 * retries)
+            else:
+                raise e
+
 if query:
     with st.spinner("Searching and generating answer using Google Gemini..."):
         try:
-            result = rag_chain.invoke(query)
+            result = invoke_app_with_retry(query)
             
             st.markdown("### Answer")
             st.info(result["answer"])
@@ -177,7 +193,7 @@ if query:
         except Exception as e:
             err_str = str(e)
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                st.warning("⏱️ **Google API Rate Limit Reached (429)**: You have hit the Google Gemini free-tier quota (20 requests/minute). Please wait **56 seconds** before typing another question.")
+                st.warning("⏱️ **Google API Daily Quota Exceeded (429)**: The free-tier API daily quota (GenerateRequestsPerDay) has been reached. Please generate a new free API key at https://aistudio.google.com/app/apikey or update `.env`.")
             elif "503" in err_str or "UNAVAILABLE" in err_str:
                 st.warning("📡 **Google API Temporary Overload (503)**: Google servers are experiencing high traffic. Please retry in a few seconds.")
             else:
