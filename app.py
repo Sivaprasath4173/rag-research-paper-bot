@@ -143,7 +143,7 @@ if not api_key or "your_google_api_key" in api_key:
     st.warning("⚠️ **API Key Required**: Please update `GOOGLE_API_KEY` in `.env` or enter it in the sidebar.")
     st.stop()
 
-llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", google_api_key=api_key, temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key, temperature=0)
 
 output_parser = StrOutputParser()
 
