@@ -1,0 +1,26 @@
+# Environments & Secrets
+.env
+.venv/
+venv/
+env/
+
+# Python & Jupyter Caches
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+
+# Temporary / Maintenance / Debug Scripts
+fix_*.py
+patch_*.py
+test_*.py
+clean_*.py
+audit.py
+restore_dual_llm.py
+run_notebook_and_capture.py
+notebook_extracted.txt
+notebook_markdown.txt
+rag_notebook_fixed.ipynb
+
+# Optional: Vector database storage (can be rebuilt via notebook/app)
+chroma_db/

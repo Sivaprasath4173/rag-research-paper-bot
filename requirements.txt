@@ -1,0 +1,29 @@
+# ── Core RAG stack ────────────────────────────────────────────────────────────
+langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-google-genai>=1.0.0          # Gemini via LangChain
+langchain-openai>=0.1.0               # OpenAI embeddings via LangChain
+langchain-chroma>=0.1.0               # ChromaDB integration for LangChain
+
+# ── PDF loading ────────────────────────────────────────────────────────────────
+pypdf>=4.0.0                          # Backend used by PyPDFLoader
+
+# ── Embeddings ────────────────────────────────────────────────────────────────
+sentence-transformers>=3.0.0          # BAAI/bge-m3 (local, free)
+openai>=1.0.0                         # text-embedding-3-small (commercial)
+
+# ── Vector store ──────────────────────────────────────────────────────────────
+chromadb>=0.5.0
+
+# ── Keyword search (Section 4: BM25 hybrid retrieval) ─────────────────────────
+rank_bm25>=0.2.2
+
+# ── Env / config ──────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0
+
+# ── Notebook display ──────────────────────────────────────────────────────────
+ipykernel>=6.0.0
+jupyter>=1.0.0
+
+# ── Streamlit UI (Section 7) ──────────────────────────────────────────────────
+streamlit>=1.35.0
