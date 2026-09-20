@@ -1,9 +1,10 @@
 """
 app.py
 ------
-ArXivInsight AI — Research Paper Intelligence System (Streamlit Application)
-Unique Capstone UI featuring PDF Uploader, Dynamic Chunking, Dual Embeddings,
-Hybrid/Cosine/MMR Retrieval Strategies, and Citation Cards.
+PaperQuery AI — Research Paper Intelligence Assistant (Streamlit Application)
+Clean, minimalist, plain UI for searching and asking questions on AI/ML research papers.
+Features dynamic PDF uploading, chunking strategies, dual embeddings, hybrid search,
+and grounded generation with source page citations.
 Run with: streamlit run app.py
 """
 
@@ -30,86 +31,24 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-st.set_page_config(page_title="ArXivInsight AI — Research Paper Assistant", page_icon="🔬", layout="wide")
-
-# Unique Premium Dark Cyberpunk Theme CSS
-st.markdown("""
-<style>
-    .main {
-        background-color: #0b0f19;
-        color: #e2e8f0;
-    }
-    .stApp {
-        background-color: #0b0f19;
-    }
-    .user-msg {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border-left: 4px solid #38bdf8;
-        border-radius: 8px;
-        padding: 14px 18px;
-        color: #f8fafc;
-        margin-bottom: 16px;
-        font-weight: 600;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-    .answer-card {
-        background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-        border: 1px solid #6366f1;
-        border-radius: 12px;
-        padding: 20px 24px;
-        color: #f1f5f9;
-        font-size: 0.96rem;
-        line-height: 1.7;
-        margin-bottom: 20px;
-        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
-    }
-    .source-card {
-        background: #111827;
-        border: 1px solid #1f2937;
-        border-radius: 10px;
-        padding: 14px 18px;
-        margin-bottom: 12px;
-    }
-    .source-title {
-        color: #38bdf8;
-        font-weight: 700;
-        font-size: 0.88rem;
-        margin-bottom: 4px;
-    }
-    .source-page {
-        color: #a78bfa;
-        font-size: 0.8rem;
-        margin-bottom: 8px;
-        font-weight: 600;
-    }
-    .source-text {
-        color: #cbd5e1;
-        font-size: 0.82rem;
-        font-family: 'Fira Code', 'Cascadia Code', monospace;
-        background: #030712;
-        padding: 10px;
-        border-radius: 6px;
-        border: 1px solid #111827;
-        white-space: pre-wrap;
-    }
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="PaperQuery AI — Research Paper Assistant", page_icon="📄", layout="wide")
 
 # --- App Header ---
-st.title("🔬 ArXivInsight AI — Seminal Research Paper System")
-st.caption("Curated AI/ML research paper intelligence pipeline. Grounded, zero-hallucination answers powered by Hybrid Search & Google Gemini.")
+st.title("📄 PaperQuery AI")
+st.subheader("Seminal Research Paper Question Answering Engine")
+st.caption("Answers are generated strictly from the ingested research paper content with full paper and page citations.")
 st.markdown("**Author:** Sivaprasath | **GenAI Pin:** Pinnacle Plus Capstone")
+st.divider()
 
 # --- Sidebar Configuration ---
-st.sidebar.title("⚡ Control Panel")
+st.sidebar.header("Configuration")
 
-# 1. Embedding Method
-st.sidebar.markdown("### 🧬 Embedding Model")
-embedding_option = st.sidebar.radio(
-    "Select Model:",
+# 1. Embedding Model Selector
+embedding_option = st.sidebar.selectbox(
+    "Embedding Model",
     options=[
-        "BAAI/bge-m3 (1024-dim, Multi-lingual)",
-        "mxbai-embed-large-v1 (1024-dim, English)"
+        "BAAI/bge-m3 (1024-dim)",
+        "mixedbread-ai/mxbai-embed-large-v1 (1024-dim)"
     ],
     index=0
 )
@@ -117,21 +56,21 @@ embedding_model_name = "BAAI/bge-m3" if "bge-m3" in embedding_option else "mixed
 collection_name = "bge_m3" if "bge-m3" in embedding_option else "mxbai"
 
 # 2. Upload Documents
-st.sidebar.markdown("### 📚 Custom Corpus Upload")
+st.sidebar.subheader("Upload Documents")
 uploaded_files = st.sidebar.file_uploader(
-    "Upload Research Papers (PDF)",
+    "Upload PDF Papers",
     type=["pdf"],
     accept_multiple_files=True,
-    help="Upload your own research PDFs or query the pre-loaded seminal papers (Attention Is All You Need & BERT)."
+    help="Upload research PDFs or query the pre-loaded papers (Attention Is All You Need & BERT)."
 )
 
 # 3. Chunking Strategy
-st.sidebar.markdown("### ✂️ Chunk Granularity")
+st.sidebar.subheader("Chunking Strategy")
 chunking_choice = st.sidebar.radio(
-    "Splitting Config:",
+    "Select Chunk Size:",
     options=[
-        "Config A — 500 chars (50 overlap)",
-        "Config B — 1000 chars (150 overlap)"
+        "Config A (size 500, overlap 50)",
+        "Config B (size 1000, overlap 150)"
     ],
     index=0
 )
@@ -139,19 +78,19 @@ chunk_size = 500 if "500" in chunking_choice else 1000
 chunk_overlap = 50 if "500" in chunking_choice else 150
 
 # 4. Retrieval Strategy
-st.sidebar.markdown("### 🔎 Retrieval Strategy")
+st.sidebar.subheader("Retrieval Strategy")
 retrieval_strategy = st.sidebar.radio(
-    "Strategy:",
+    "Select Strategy:",
     options=[
-        "Hybrid Fusion (BM25 + Vector)",
-        "Dense Vector Search (Cosine)",
+        "Hybrid Search (BM25 + Dense)",
+        "Dense Search (Cosine Similarity)",
         "Max Marginal Relevance (MMR)"
     ],
     index=0
 )
 
 # 5. Top-K Sources
-top_k = st.sidebar.slider("Top Context Passages (k)", min_value=1, max_value=5, value=3)
+top_k = st.sidebar.slider("Top-K Passages", min_value=1, max_value=5, value=3)
 
 # Save uploaded files if provided
 PDF_FOLDER = Path("./pdfs")
@@ -208,14 +147,14 @@ def initialize_pipeline(chunk_size_val: int, chunk_overlap_val: int, model_name:
     
     return active_chunks, bm25_index, vectorstore
 
-with st.spinner("Initializing Pipeline, Vectorstores & BM25 Index..."):
+with st.spinner("Loading indexes and pipeline..."):
     active_chunks, bm25_index, active_vectorstore = initialize_pipeline(
         chunk_size, chunk_overlap, embedding_model_name, collection_name
     )
 
-def retrieve_documents(query: str, k: int = 3, strategy: str = "Hybrid Fusion (BM25 + Vector)"):
+def retrieve_documents(query: str, k: int = 3, strategy: str = "Hybrid Search (BM25 + Dense)"):
     """Retrieves passages using Cosine Similarity, MMR, or Hybrid (BM25 + Dense) fusion."""
-    if strategy == "Dense Vector Search (Cosine)":
+    if strategy == "Dense Search (Cosine Similarity)":
         return active_vectorstore.similarity_search(query, k=k)
     elif strategy == "Max Marginal Relevance (MMR)":
         return active_vectorstore.max_marginal_relevance_search(query, k=k, fetch_k=20)
@@ -260,7 +199,7 @@ if not api_key or "your_google_api_key" in api_key:
     api_key = user_key.strip()
 
 if not api_key or "your_google_api_key" in api_key:
-    st.warning("⚠️ **API Key Required**: Please update `GOOGLE_API_KEY` in `.env` or enter it in the sidebar.")
+    st.warning("Please update GOOGLE_API_KEY in .env or enter it in the sidebar.")
     st.stop()
 
 SYSTEM_PROMPT = """You are a precise research assistant. Your job is to answer \
@@ -317,50 +256,39 @@ def invoke_app_with_retry(question: str, max_retries: int = 5) -> dict:
                 raise e
 
 # --- Main Query Input & Interface ---
-st.markdown("##### 💡 Quick Sample Questions:")
+st.markdown("#### Sample Questions")
 col1, col2, col3 = st.columns(3)
 
 default_query = ""
-if col1.button("📌 Transformer d_model Dimension"):
+if col1.button("Transformer d_model Dimension"):
     default_query = "What is the dimensionality of the embeddings (d_model) in the base Transformer model?"
-if col2.button("📌 BERT-Base Architecture Parameters"):
+if col2.button("BERT-Base Parameters"):
     default_query = "What is the number of layers (L) and hidden size (H) in BERT-Base?"
-if col3.button("📌 Why Self-Attention vs Recurrence"):
+if col3.button("Self-Attention vs Recurrence"):
     default_query = "Why is self-attention faster than recurrent layers?"
 
-query = st.chat_input("Ask a question about your uploaded research papers...")
-if not query and default_query:
-    query = default_query
+query = st.text_input("Enter your question:", value=default_query)
 
 if query:
-    # Display user message
-    st.markdown(f'<div class="user-msg">❓ {query}</div>', unsafe_allow_html=True)
-    
-    with st.spinner("Searching corpus & generating grounded response..."):
+    with st.spinner("Generating answer..."):
         try:
             result = invoke_app_with_retry(query)
             
-            # Display answer card
-            st.markdown(f'<div class="answer-card">🧠 {result["answer"]}</div>', unsafe_allow_html=True)
+            st.markdown("### Answer")
+            st.write(result["answer"])
             
-            # Display source expander matching screenshot style
-            with st.expander(f"📖 Top {len(result['source_docs'])} Supporting Sources Cited", expanded=True):
-                for i, doc in enumerate(result["source_docs"], 1):
-                    fname = doc.metadata.get("filename", "unknown").replace("_", " ").title() + ".pdf"
-                    page = doc.metadata.get("page_display", "?")
-                    st.markdown(f"""
-                    <div class="source-card">
-                        <div class="source-title">[{i}] {fname}</div>
-                        <div class="source-page">📍 Page {page}</div>
-                        <div class="source-text">{doc.page_content.strip()}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+            st.markdown(f"### Supporting Sources ({len(result['source_docs'])})")
+            for i, doc in enumerate(result["source_docs"], 1):
+                fname = doc.metadata.get("filename", "unknown").replace("_", " ").title() + ".pdf"
+                page = doc.metadata.get("page_display", "?")
+                with st.expander(f"Source {i}: {fname} (Page {page})"):
+                    st.text(doc.page_content.strip())
                     
         except Exception as e:
             err_str = str(e)
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                st.warning("⏱️ **Google API Daily Quota Exceeded (429)**: The free-tier API daily quota has been reached. Please generate a new free API key at https://aistudio.google.com/app/apikey or update `.env`.")
+                st.warning("Google API Daily Quota Exceeded (429). Please update your API key in .env or enter a new key in the sidebar.")
             elif "503" in err_str or "UNAVAILABLE" in err_str:
-                st.warning("📡 **Google API Temporary Overload (503)**: Google servers are experiencing high traffic. Please retry in a few seconds.")
+                st.warning("Google API Temporary Overload (503). Please retry in a few seconds.")
             else:
                 st.error(f"An error occurred: {err_str}")
