@@ -96,10 +96,15 @@ PDF_FOLDER = Path("./pdfs")
 PDF_FOLDER.mkdir(parents=True, exist_ok=True)
 
 if uploaded_files:
+    new_upload = False
     for uploaded_file in uploaded_files:
         target_path = PDF_FOLDER / uploaded_file.name
+        if not target_path.exists():
+            new_upload = True
         with open(target_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
+    if new_upload:
+        st.cache_resource.clear()
 
 # --- Load Corpus & Vectorstores ---
 @st.cache_resource(show_spinner=False)
