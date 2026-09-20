@@ -1,10 +1,10 @@
 """
 app.py
 ------
-PaperQuery AI — Research Paper Intelligence Assistant (Streamlit Application)
-Clean, minimalist, plain UI for searching and asking questions on AI/ML research papers.
-Features dynamic PDF uploading, chunking strategies, dual embeddings, hybrid search,
-and grounded generation with source page citations.
+ScholarQuery AI — Research Paper Question Answering Engine (Streamlit Application)
+Plain, professional, minimalist interface for querying AI/ML research literature.
+Runs grounded RAG using dynamic PDF loading, dual embeddings, hybrid retrieval,
+and precise source citations.
 Run with: streamlit run app.py
 """
 
@@ -31,17 +31,16 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-st.set_page_config(page_title="PaperQuery AI — Research Paper Assistant", page_icon="📄", layout="wide")
+st.set_page_config(page_title="ScholarQuery AI — Research Assistant", layout="wide")
 
 # --- App Header ---
-st.title("📄 PaperQuery AI")
-st.subheader("Seminal Research Paper Question Answering Engine")
-st.caption("Answers are generated strictly from the ingested research paper content with full paper and page citations.")
-st.markdown("**Author:** Sivaprasath | **GenAI Pin:** Pinnacle Plus Capstone")
+st.title("ScholarQuery AI")
+st.caption("Seminal Research Paper Question Answering Engine")
+st.text("Author: Sivaprasath | GenAI Pin: Pinnacle Plus Capstone")
 st.divider()
 
 # --- Sidebar Configuration ---
-st.sidebar.header("Configuration")
+st.sidebar.header("System Settings")
 
 # 1. Embedding Model Selector
 embedding_option = st.sidebar.selectbox(
@@ -56,18 +55,18 @@ embedding_model_name = "BAAI/bge-m3" if "bge-m3" in embedding_option else "mixed
 collection_name = "bge_m3" if "bge-m3" in embedding_option else "mxbai"
 
 # 2. Upload Documents
-st.sidebar.subheader("Upload Documents")
+st.sidebar.subheader("Document Ingestion")
 uploaded_files = st.sidebar.file_uploader(
-    "Upload PDF Papers",
+    "Upload Research PDFs",
     type=["pdf"],
     accept_multiple_files=True,
-    help="Upload research PDFs or query the pre-loaded papers (Attention Is All You Need & BERT)."
+    help="Upload research papers or query pre-loaded documents."
 )
 
 # 3. Chunking Strategy
-st.sidebar.subheader("Chunking Strategy")
+st.sidebar.subheader("Text Splitting")
 chunking_choice = st.sidebar.radio(
-    "Select Chunk Size:",
+    "Chunk Size Configuration:",
     options=[
         "Config A (size 500, overlap 50)",
         "Config B (size 1000, overlap 150)"
@@ -80,7 +79,7 @@ chunk_overlap = 50 if "500" in chunking_choice else 150
 # 4. Retrieval Strategy
 st.sidebar.subheader("Retrieval Strategy")
 retrieval_strategy = st.sidebar.radio(
-    "Select Strategy:",
+    "Strategy:",
     options=[
         "Hybrid Search (BM25 + Dense)",
         "Dense Search (Cosine Similarity)",
@@ -90,7 +89,7 @@ retrieval_strategy = st.sidebar.radio(
 )
 
 # 5. Top-K Sources
-top_k = st.sidebar.slider("Top-K Passages", min_value=1, max_value=5, value=3)
+top_k = st.sidebar.slider("Retrieved Passages (k)", min_value=1, max_value=5, value=3)
 
 # Save uploaded files if provided
 PDF_FOLDER = Path("./pdfs")
@@ -147,7 +146,7 @@ def initialize_pipeline(chunk_size_val: int, chunk_overlap_val: int, model_name:
     
     return active_chunks, bm25_index, vectorstore
 
-with st.spinner("Loading indexes and pipeline..."):
+with st.spinner("Initializing indexes and pipeline..."):
     active_chunks, bm25_index, active_vectorstore = initialize_pipeline(
         chunk_size, chunk_overlap, embedding_model_name, collection_name
     )
@@ -256,7 +255,7 @@ def invoke_app_with_retry(question: str, max_retries: int = 5) -> dict:
                 raise e
 
 # --- Main Query Input & Interface ---
-st.markdown("#### Sample Questions")
+st.subheader("Sample Queries")
 col1, col2, col3 = st.columns(3)
 
 default_query = ""
@@ -270,14 +269,14 @@ if col3.button("Self-Attention vs Recurrence"):
 query = st.text_input("Enter your question:", value=default_query)
 
 if query:
-    with st.spinner("Generating answer..."):
+    with st.spinner("Processing request..."):
         try:
             result = invoke_app_with_retry(query)
             
-            st.markdown("### Answer")
+            st.subheader("Answer")
             st.write(result["answer"])
             
-            st.markdown(f"### Supporting Sources ({len(result['source_docs'])})")
+            st.subheader(f"Supporting Sources ({len(result['source_docs'])})")
             for i, doc in enumerate(result["source_docs"], 1):
                 fname = doc.metadata.get("filename", "unknown").replace("_", " ").title() + ".pdf"
                 page = doc.metadata.get("page_display", "?")
