@@ -1,9 +1,9 @@
 """
 app.py
 ------
-DocuMindAI — Strict Document QA Agent (Streamlit Application)
-Comprehensive Capstone UI featuring PDF Uploader, Dynamic Chunking, Dual Embeddings,
-Hybrid/Cosine/MMR Retrieval Strategies, and Citation Cards matching DocuMindAI styling.
+ArXivInsight AI — Research Paper Intelligence System (Streamlit Application)
+Unique Capstone UI featuring PDF Uploader, Dynamic Chunking, Dual Embeddings,
+Hybrid/Cosine/MMR Retrieval Strategies, and Citation Cards.
 Run with: streamlit run app.py
 """
 
@@ -30,86 +30,86 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-st.set_page_config(page_title="DocuMindAI — Strict Document QA Agent", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="ArXivInsight AI — Research Paper Assistant", page_icon="🔬", layout="wide")
 
-# Custom CSS for Sleek Dark Glassmorphism Styling matching DocuMindAI example
+# Unique Premium Dark Cyberpunk Theme CSS
 st.markdown("""
 <style>
     .main {
-        background-color: #0d1117;
-        color: #c9d1d9;
+        background-color: #0b0f19;
+        color: #e2e8f0;
     }
     .stApp {
-        background-color: #0d1117;
-    }
-    .css-1d3 Sterling {
-        background-color: #161b22;
+        background-color: #0b0f19;
     }
     .user-msg {
-        background: #1f2937;
-        border: 1px solid #374151;
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-left: 4px solid #38bdf8;
         border-radius: 8px;
-        padding: 12px 16px;
-        color: #f3f4f6;
-        margin-bottom: 12px;
-        font-weight: 500;
+        padding: 14px 18px;
+        color: #f8fafc;
+        margin-bottom: 16px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     .answer-card {
-        background: linear-gradient(135deg, #1b2838 0%, #0d1726 100%);
-        border: 1px solid #2563eb;
-        border-radius: 10px;
-        padding: 18px 22px;
-        color: #e0f2fe;
-        font-size: 0.95rem;
-        line-height: 1.6;
-        margin-bottom: 16px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+        border: 1px solid #6366f1;
+        border-radius: 12px;
+        padding: 20px 24px;
+        color: #f1f5f9;
+        font-size: 0.96rem;
+        line-height: 1.7;
+        margin-bottom: 20px;
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.15);
     }
     .source-card {
-        background: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 8px;
-        padding: 12px 16px;
-        margin-bottom: 10px;
+        background: #111827;
+        border: 1px solid #1f2937;
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-bottom: 12px;
     }
     .source-title {
-        color: #58a6ff;
+        color: #38bdf8;
         font-weight: 700;
-        font-size: 0.85rem;
+        font-size: 0.88rem;
         margin-bottom: 4px;
     }
     .source-page {
-        color: #8b949e;
-        font-size: 0.78rem;
+        color: #a78bfa;
+        font-size: 0.8rem;
         margin-bottom: 8px;
+        font-weight: 600;
     }
     .source-text {
-        color: #c9d1d9;
-        font-size: 0.8rem;
-        font-family: monospace;
-        background: #0d1117;
-        padding: 8px;
-        border-radius: 4px;
+        color: #cbd5e1;
+        font-size: 0.82rem;
+        font-family: 'Fira Code', 'Cascadia Code', monospace;
+        background: #030712;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #111827;
         white-space: pre-wrap;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # --- App Header ---
-st.title("🤖 DocuMindAI — Strict Document QA Agent")
-st.caption("Upload research PDFs and ask questions. Answers are generated **strictly** from document content — zero hallucinations.")
+st.title("🔬 ArXivInsight AI — Seminal Research Paper System")
+st.caption("Curated AI/ML research paper intelligence pipeline. Grounded, zero-hallucination answers powered by Hybrid Search & Google Gemini.")
 st.markdown("**Author:** Sivaprasath | **GenAI Pin:** Pinnacle Plus Capstone")
 
 # --- Sidebar Configuration ---
-st.sidebar.title("⚙️ Configuration")
+st.sidebar.title("⚡ Control Panel")
 
 # 1. Embedding Method
-st.sidebar.markdown("### 🔲 Embedding Method")
+st.sidebar.markdown("### 🧬 Embedding Model")
 embedding_option = st.sidebar.radio(
-    "Choose embedding model:",
+    "Select Model:",
     options=[
-        "HuggingFace — BAAI/bge-m3 (local, free)",
-        "HuggingFace — mixedbread-ai/mxbai-embed-large-v1 (local, free)"
+        "BAAI/bge-m3 (1024-dim, Multi-lingual)",
+        "mxbai-embed-large-v1 (1024-dim, English)"
     ],
     index=0
 )
@@ -117,21 +117,21 @@ embedding_model_name = "BAAI/bge-m3" if "bge-m3" in embedding_option else "mixed
 collection_name = "bge_m3" if "bge-m3" in embedding_option else "mxbai"
 
 # 2. Upload Documents
-st.sidebar.markdown("### 📄 Upload Documents")
+st.sidebar.markdown("### 📚 Custom Corpus Upload")
 uploaded_files = st.sidebar.file_uploader(
-    "Upload PDF Papers",
+    "Upload Research Papers (PDF)",
     type=["pdf"],
     accept_multiple_files=True,
-    help="Upload your own research PDFs or use the pre-loaded seminal papers (Attention & BERT)."
+    help="Upload your own research PDFs or query the pre-loaded seminal papers (Attention Is All You Need & BERT)."
 )
 
 # 3. Chunking Strategy
-st.sidebar.markdown("### ✂️ Chunking Strategy")
+st.sidebar.markdown("### ✂️ Chunk Granularity")
 chunking_choice = st.sidebar.radio(
-    "Select:",
+    "Splitting Config:",
     options=[
-        "A — size 500, overlap 50",
-        "B — size 1000, overlap 150"
+        "Config A — 500 chars (50 overlap)",
+        "Config B — 1000 chars (150 overlap)"
     ],
     index=0
 )
@@ -139,19 +139,19 @@ chunk_size = 500 if "500" in chunking_choice else 1000
 chunk_overlap = 50 if "500" in chunking_choice else 150
 
 # 4. Retrieval Strategy
-st.sidebar.markdown("### 🔍 Retrieval Strategy")
+st.sidebar.markdown("### 🔎 Retrieval Strategy")
 retrieval_strategy = st.sidebar.radio(
-    "Select:",
+    "Strategy:",
     options=[
-        "Hybrid Search (BM25 + Vector)",
-        "Cosine Similarity (Dense Vector)",
+        "Hybrid Fusion (BM25 + Vector)",
+        "Dense Vector Search (Cosine)",
         "Max Marginal Relevance (MMR)"
     ],
     index=0
 )
 
 # 5. Top-K Sources
-top_k = st.sidebar.slider("Top-K Sources to Retrieve", min_value=1, max_value=5, value=3)
+top_k = st.sidebar.slider("Top Context Passages (k)", min_value=1, max_value=5, value=3)
 
 # Save uploaded files if provided
 PDF_FOLDER = Path("./pdfs")
@@ -208,14 +208,14 @@ def initialize_pipeline(chunk_size_val: int, chunk_overlap_val: int, model_name:
     
     return active_chunks, bm25_index, vectorstore
 
-with st.spinner("Initializing Document Index & Vector Store..."):
+with st.spinner("Initializing Pipeline, Vectorstores & BM25 Index..."):
     active_chunks, bm25_index, active_vectorstore = initialize_pipeline(
         chunk_size, chunk_overlap, embedding_model_name, collection_name
     )
 
-def retrieve_documents(query: str, k: int = 3, strategy: str = "Hybrid Search (BM25 + Vector)"):
+def retrieve_documents(query: str, k: int = 3, strategy: str = "Hybrid Fusion (BM25 + Vector)"):
     """Retrieves passages using Cosine Similarity, MMR, or Hybrid (BM25 + Dense) fusion."""
-    if strategy == "Cosine Similarity (Dense Vector)":
+    if strategy == "Dense Vector Search (Cosine)":
         return active_vectorstore.similarity_search(query, k=k)
     elif strategy == "Max Marginal Relevance (MMR)":
         return active_vectorstore.max_marginal_relevance_search(query, k=k, fetch_k=20)
@@ -328,30 +328,30 @@ if col2.button("📌 BERT-Base Architecture Parameters"):
 if col3.button("📌 Why Self-Attention vs Recurrence"):
     default_query = "Why is self-attention faster than recurrent layers?"
 
-query = st.chat_input("Ask a question about your uploaded papers...")
+query = st.chat_input("Ask a question about your uploaded research papers...")
 if not query and default_query:
     query = default_query
 
 if query:
     # Display user message
-    st.markdown(f'<div class="user-msg">🔴 {query}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="user-msg">❓ {query}</div>', unsafe_allow_html=True)
     
-    with st.spinner("Searching and generating grounded answer..."):
+    with st.spinner("Searching corpus & generating grounded response..."):
         try:
             result = invoke_app_with_retry(query)
             
             # Display answer card
-            st.markdown(f'<div class="answer-card">🤖 {result["answer"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="answer-card">🧠 {result["answer"]}</div>', unsafe_allow_html=True)
             
             # Display source expander matching screenshot style
-            with st.expander(f"📚 Top {len(result['source_docs'])} Supporting Sources", expanded=True):
+            with st.expander(f"📖 Top {len(result['source_docs'])} Supporting Sources Cited", expanded=True):
                 for i, doc in enumerate(result["source_docs"], 1):
                     fname = doc.metadata.get("filename", "unknown").replace("_", " ").title() + ".pdf"
                     page = doc.metadata.get("page_display", "?")
                     st.markdown(f"""
                     <div class="source-card">
                         <div class="source-title">[{i}] {fname}</div>
-                        <div class="source-page">— Page {page}</div>
+                        <div class="source-page">📍 Page {page}</div>
                         <div class="source-text">{doc.page_content.strip()}</div>
                     </div>
                     """, unsafe_allow_html=True)
