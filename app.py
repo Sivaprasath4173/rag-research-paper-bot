@@ -1,13 +1,14 @@
 """
 app.py
 ------
-Streamlit UI for the RAG Capstone Project.
-Interactive research paper Q&A with configurable embeddings, retrieval strategies,
-and grounded generation powered by Google Gemini.
+DocuMindAI — Strict Document QA Agent (Streamlit Application)
+Comprehensive Capstone UI featuring PDF Uploader, Dynamic Chunking, Dual Embeddings,
+Hybrid/Cosine/MMR Retrieval Strategies, and Citation Cards matching DocuMindAI styling.
 Run with: streamlit run app.py
 """
 
 import os
+import shutil
 import numpy as np
 from pathlib import Path
 import streamlit as st
@@ -29,58 +30,162 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-st.set_page_config(page_title="RAG Capstone Q&A", page_icon="📚", layout="wide")
+st.set_page_config(page_title="DocuMindAI — Strict Document QA Agent", page_icon="🤖", layout="wide")
 
-st.title("📚 Research Paper Answer Bot")
+# Custom CSS for Sleek Dark Glassmorphism Styling matching DocuMindAI example
+st.markdown("""
+<style>
+    .main {
+        background-color: #0d1117;
+        color: #c9d1d9;
+    }
+    .stApp {
+        background-color: #0d1117;
+    }
+    .css-1d3 Sterling {
+        background-color: #161b22;
+    }
+    .user-msg {
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: #f3f4f6;
+        margin-bottom: 12px;
+        font-weight: 500;
+    }
+    .answer-card {
+        background: linear-gradient(135deg, #1b2838 0%, #0d1726 100%);
+        border: 1px solid #2563eb;
+        border-radius: 10px;
+        padding: 18px 22px;
+        color: #e0f2fe;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .source-card {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+    }
+    .source-title {
+        color: #58a6ff;
+        font-weight: 700;
+        font-size: 0.85rem;
+        margin-bottom: 4px;
+    }
+    .source-page {
+        color: #8b949e;
+        font-size: 0.78rem;
+        margin-bottom: 8px;
+    }
+    .source-text {
+        color: #c9d1d9;
+        font-size: 0.8rem;
+        font-family: monospace;
+        background: #0d1117;
+        padding: 8px;
+        border-radius: 4px;
+        white-space: pre-wrap;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- App Header ---
+st.title("🤖 DocuMindAI — Strict Document QA Agent")
+st.caption("Upload research PDFs and ask questions. Answers are generated **strictly** from document content — zero hallucinations.")
 st.markdown("**Author:** Sivaprasath | **GenAI Pin:** Pinnacle Plus Capstone")
-st.markdown("Retrieval-Augmented Generation (RAG) Capstone Project")
 
 # --- Sidebar Configuration ---
-st.sidebar.title("⚙️ RAG Configurations")
+st.sidebar.title("⚙️ Configuration")
 
-# 1. Embedding Model Selector
-embedding_choice = st.sidebar.selectbox(
-    "Embedding Model",
-    options=["BAAI/bge-m3 (1024-dim)", "mxbai-embed-large-v1 (1024-dim)"],
-    index=0,
-    help="Compare different open-source embedding models loaded in ChromaDB"
+# 1. Embedding Method
+st.sidebar.markdown("### 🔲 Embedding Method")
+embedding_option = st.sidebar.radio(
+    "Choose embedding model:",
+    options=[
+        "HuggingFace — BAAI/bge-m3 (local, free)",
+        "HuggingFace — mixedbread-ai/mxbai-embed-large-v1 (local, free)"
+    ],
+    index=0
 )
-embedding_model_name = "BAAI/bge-m3" if "bge-m3" in embedding_choice else "mixedbread-ai/mxbai-embed-large-v1"
-collection_name = "bge_m3" if "bge-m3" in embedding_choice else "mxbai"
+embedding_model_name = "BAAI/bge-m3" if "bge-m3" in embedding_option else "mixedbread-ai/mxbai-embed-large-v1"
+collection_name = "bge_m3" if "bge-m3" in embedding_option else "mxbai"
 
-# 2. Retrieval Strategy Selector
+# 2. Upload Documents
+st.sidebar.markdown("### 📄 Upload Documents")
+uploaded_files = st.sidebar.file_uploader(
+    "Upload PDF Papers",
+    type=["pdf"],
+    accept_multiple_files=True,
+    help="Upload your own research PDFs or use the pre-loaded seminal papers (Attention & BERT)."
+)
+
+# 3. Chunking Strategy
+st.sidebar.markdown("### ✂️ Chunking Strategy")
+chunking_choice = st.sidebar.radio(
+    "Select:",
+    options=[
+        "A — size 500, overlap 50",
+        "B — size 1000, overlap 150"
+    ],
+    index=0
+)
+chunk_size = 500 if "500" in chunking_choice else 1000
+chunk_overlap = 50 if "500" in chunking_choice else 150
+
+# 4. Retrieval Strategy
+st.sidebar.markdown("### 🔍 Retrieval Strategy")
 retrieval_strategy = st.sidebar.radio(
-    "Retrieval Strategy",
-    options=["Hybrid (BM25 + Dense)", "Dense Vector Only"],
-    index=0,
-    help="Hybrid uses 50% BM25 keyword matching + 50% vector similarity fusion"
+    "Select:",
+    options=[
+        "Hybrid Search (BM25 + Vector)",
+        "Cosine Similarity (Dense Vector)",
+        "Max Marginal Relevance (MMR)"
+    ],
+    index=0
 )
 
-# 3. Top-K Documents Slider
+# 5. Top-K Sources
 top_k = st.sidebar.slider("Top-K Sources to Retrieve", min_value=1, max_value=5, value=3)
 
-st.sidebar.divider()
-st.sidebar.info("🤖 **LLM Engine:** Google Gemini (`gemini-flash-latest`)")
+# Save uploaded files if provided
+PDF_FOLDER = Path("./pdfs")
+PDF_FOLDER.mkdir(parents=True, exist_ok=True)
+
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        target_path = PDF_FOLDER / uploaded_file.name
+        with open(target_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
 
 # --- Load Corpus & Vectorstores ---
 @st.cache_resource(show_spinner=False)
-def load_corpus_and_indexes():
-    """Loads documents, splits chunks, initializes BM25 and ChromaDB vectorstores."""
+def initialize_pipeline(chunk_size_val: int, chunk_overlap_val: int, model_name: str, col_name: str):
+    """Loads documents, chunks them dynamically, initializes BM25 index and ChromaDB vectorstore."""
     load_dotenv(override=False)
-    PDF_FOLDER = Path("./pdfs")
     CHROMA_DB_DIR = Path("./chroma_db")
     
     pdf_files = sorted([p for p in PDF_FOLDER.iterdir() if p.suffix.lower() == ".pdf"])
     all_docs = []
     for p in pdf_files:
-        pages = PyPDFLoader(str(p)).load()
-        for doc in pages:
-            doc.metadata["filename"] = p.stem
-            doc.metadata["page_display"] = doc.metadata["page"] + 1
-        all_docs.extend(pages)
-        
+        try:
+            pages = PyPDFLoader(str(p)).load()
+            for doc in pages:
+                doc.metadata["filename"] = p.stem
+                doc.metadata["page_display"] = doc.metadata["page"] + 1
+            all_docs.extend(pages)
+        except Exception as e:
+            pass
+            
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500, chunk_overlap=50, add_start_index=True,
+        chunk_size=chunk_size_val,
+        chunk_overlap=chunk_overlap_val,
+        add_start_index=True,
         separators=["\n\n", "\n", ". ", " ", ""]
     )
     active_chunks = splitter.split_documents(all_docs)
@@ -89,45 +194,33 @@ def load_corpus_and_indexes():
     tokenized_corpus = [c.page_content.lower().split() for c in active_chunks]
     bm25_index = BM25Okapi(tokenized_corpus)
     
-    # Embedding 1: BAAI/bge-m3
-    bge_embeddings = HuggingFaceEmbeddings(
-        model_name="BAAI/bge-m3",
+    embeddings = HuggingFaceEmbeddings(
+        model_name=model_name,
         model_kwargs={"device": "cpu"},
         encode_kwargs={"normalize_embeddings": True},
     )
-    bge_vectorstore = Chroma(
-        collection_name="bge_m3",
-        persist_directory=str(CHROMA_DB_DIR / "bge_m3"),
-        embedding_function=bge_embeddings,
+    
+    vectorstore = Chroma(
+        collection_name=col_name,
+        persist_directory=str(CHROMA_DB_DIR / col_name),
+        embedding_function=embeddings,
     )
     
-    # Embedding 2: mxbai-embed-large-v1
-    mxbai_embeddings = HuggingFaceEmbeddings(
-        model_name="mixedbread-ai/mxbai-embed-large-v1",
-        model_kwargs={"device": "cpu"},
-        encode_kwargs={"normalize_embeddings": True},
+    return active_chunks, bm25_index, vectorstore
+
+with st.spinner("Initializing Document Index & Vector Store..."):
+    active_chunks, bm25_index, active_vectorstore = initialize_pipeline(
+        chunk_size, chunk_overlap, embedding_model_name, collection_name
     )
-    mxbai_vectorstore = Chroma(
-        collection_name="mxbai",
-        persist_directory=str(CHROMA_DB_DIR / "mxbai"),
-        embedding_function=mxbai_embeddings,
-    )
-    
-    return active_chunks, bm25_index, bge_vectorstore, mxbai_vectorstore
 
-with st.spinner("Initializing Pipeline, Vectorstores & BM25 Index..."):
-    active_chunks, bm25_index, bge_vectorstore, mxbai_vectorstore = load_corpus_and_indexes()
-
-# Select active vectorstore based on sidebar selection
-active_vectorstore = bge_vectorstore if "bge-m3" in embedding_choice else mxbai_vectorstore
-
-def retrieve_documents(query: str, k: int = 3, strategy: str = "Hybrid (BM25 + Dense)"):
-    """Retrieves relevant passages using either Dense Vector search or Hybrid (BM25 + Dense) fusion."""
-    if strategy == "Dense Vector Only":
-        results = active_vectorstore.similarity_search(query, k=k)
-        return results
+def retrieve_documents(query: str, k: int = 3, strategy: str = "Hybrid Search (BM25 + Vector)"):
+    """Retrieves passages using Cosine Similarity, MMR, or Hybrid (BM25 + Dense) fusion."""
+    if strategy == "Cosine Similarity (Dense Vector)":
+        return active_vectorstore.similarity_search(query, k=k)
+    elif strategy == "Max Marginal Relevance (MMR)":
+        return active_vectorstore.max_marginal_relevance_search(query, k=k, fetch_k=20)
     else:
-        # Hybrid Search (alpha=0.5 equal fusion)
+        # Hybrid Search (50% BM25 + 50% Vector)
         tokenized_query = query.lower().split()
         bm25_raw = np.array(bm25_index.get_scores(tokenized_query), dtype=float)
         bm25_max = bm25_raw.max()
@@ -223,34 +316,45 @@ def invoke_app_with_retry(question: str, max_retries: int = 5) -> dict:
             else:
                 raise e
 
-# --- Sample Query Quick Buttons ---
-st.markdown("##### 💡 Try Sample Research Paper Questions:")
+# --- Main Query Input & Interface ---
+st.markdown("##### 💡 Quick Sample Questions:")
 col1, col2, col3 = st.columns(3)
 
 default_query = ""
-if col1.button("📌 Transformer Embedding Dimension (d_model)"):
+if col1.button("📌 Transformer d_model Dimension"):
     default_query = "What is the dimensionality of the embeddings (d_model) in the base Transformer model?"
 if col2.button("📌 BERT-Base Architecture Parameters"):
     default_query = "What is the number of layers (L) and hidden size (H) in BERT-Base?"
 if col3.button("📌 Why Self-Attention vs Recurrence"):
     default_query = "Why is self-attention faster than recurrent layers?"
 
-query = st.text_input("Enter your question:", value=default_query)
+query = st.chat_input("Ask a question about your uploaded papers...")
+if not query and default_query:
+    query = default_query
 
 if query:
-    with st.spinner(f"Retrieving using [{retrieval_strategy}] with [{embedding_choice}] & generating answer..."):
+    # Display user message
+    st.markdown(f'<div class="user-msg">🔴 {query}</div>', unsafe_allow_html=True)
+    
+    with st.spinner("Searching and generating grounded answer..."):
         try:
             result = invoke_app_with_retry(query)
             
-            st.markdown("### Answer")
-            st.info(result["answer"])
+            # Display answer card
+            st.markdown(f'<div class="answer-card">🤖 {result["answer"]}</div>', unsafe_allow_html=True)
             
-            st.markdown(f"### Top-{len(result['source_docs'])} Sources Retrieved")
-            for i, doc in enumerate(result["source_docs"], 1):
-                fname = doc.metadata.get("filename", "unknown").replace("_", " ").title()
-                page = doc.metadata.get("page_display", "?")
-                with st.expander(f"Source {i}: {fname} (Page {page})"):
-                    st.write(doc.page_content)
+            # Display source expander matching screenshot style
+            with st.expander(f"📚 Top {len(result['source_docs'])} Supporting Sources", expanded=True):
+                for i, doc in enumerate(result["source_docs"], 1):
+                    fname = doc.metadata.get("filename", "unknown").replace("_", " ").title() + ".pdf"
+                    page = doc.metadata.get("page_display", "?")
+                    st.markdown(f"""
+                    <div class="source-card">
+                        <div class="source-title">[{i}] {fname}</div>
+                        <div class="source-page">— Page {page}</div>
+                        <div class="source-text">{doc.page_content.strip()}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
         except Exception as e:
             err_str = str(e)
