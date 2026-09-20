@@ -30,6 +30,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 
 st.set_page_config(page_title="ScholarQuery AI — Research Assistant", layout="wide")
 
@@ -196,15 +197,31 @@ def format_context(docs):
 
 # --- LLM Authentication & Chain Setup ---
 load_dotenv(override=True)
-api_key = os.environ.get("GOOGLE_API_KEY", "").strip()
+groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+google_key = os.environ.get("GOOGLE_API_KEY", "").strip()
 
-if not api_key or "your_google_api_key" in api_key:
-    user_key = st.sidebar.text_input("Enter Google API Key:", type="password")
-    api_key = user_key.strip()
+# Add LLM selection in sidebar
+st.sidebar.subheader("LLM Provider")
+llm_provider = st.sidebar.selectbox(
+    "Active LLM",
+    options=["Groq (GPT-OSS 20B - Ultra Fast)", "Google Gemini (gemini-3.6-flash)"],
+    index=0 if groq_key else 1
+)
 
-if not api_key or "your_google_api_key" in api_key:
-    st.warning("Please update GOOGLE_API_KEY in .env or enter it in the sidebar.")
-    st.stop()
+if "Groq" in llm_provider:
+    if not groq_key or "your_groq_api_key" in groq_key:
+        groq_key = st.sidebar.text_input("Enter Groq API Key:", type="password").strip()
+    if not groq_key:
+        st.warning("Please update GROQ_API_KEY in .env or enter it in the sidebar.")
+        st.stop()
+    llm = ChatGroq(model_name="openai/gpt-oss-20b", groq_api_key=groq_key, temperature=0)
+else:
+    if not google_key or "your_google_api_key" in google_key:
+        google_key = st.sidebar.text_input("Enter Google API Key:", type="password").strip()
+    if not google_key:
+        st.warning("Please update GOOGLE_API_KEY in .env or enter it in the sidebar.")
+        st.stop()
+    llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash", google_api_key=google_key, temperature=0)
 
 SYSTEM_PROMPT = """You are a precise research assistant. Your job is to answer \
 questions strictly and only based on the research paper excerpts provided in the \
@@ -230,7 +247,6 @@ prompt_template = ChatPromptTemplate.from_messages([
     ("human", "Question: {question}"),
 ])
 
-llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", google_api_key=api_key, temperature=0)
 output_parser = StrOutputParser()
 
 def rag_chain_fn(question: str) -> dict:
@@ -243,7 +259,7 @@ def rag_chain_fn(question: str) -> dict:
 
 rag_chain = RunnableLambda(rag_chain_fn)
 
-def invoke_app_with_retry(question: str, max_retries: int = 5) -> dict:
+def invoke_app_with_retry(question: str, max_retries: int = 3) -> dict:
     import time
     retries = 0
     while retries < max_retries:
@@ -255,7 +271,7 @@ def invoke_app_with_retry(question: str, max_retries: int = 5) -> dict:
                 retries += 1
                 if retries >= max_retries:
                     raise e
-                time.sleep(5 * retries)
+                time.sleep(2 * retries)
             else:
                 raise e
 
